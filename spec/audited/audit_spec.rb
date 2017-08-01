@@ -166,15 +166,35 @@ describe Audited::Audit do
 
   describe "new_attributes" do
     it "should return a hash of the new values" do
-      new_attributes = Audited::Audit.new(audited_changes: {a: [1, 2], b: [3, 4]}).new_attributes
+      new_attributes = Audited::Audit.new(action: 'update', audited_changes: {a: [1, 2], b: [3, 4]}).new_attributes
       expect(new_attributes).to eq({"a" => 2, "b" => 4})
+    end
+
+    it "should return a hash of the new values with action create" do
+      new_attributes = Audited::Audit.new(action: 'create', audited_changes: {a: [1, 2], b: [3, 4]}).new_attributes
+      expect(new_attributes).to eq({"a" => [1,2], "b" => [3,4]})
+    end
+
+    it "should return a hash of the new values with action destroy" do
+      new_attributes = Audited::Audit.new(action: 'destroy', audited_changes: {a: [1, 2], b: [3, 4]}).new_attributes
+      expect(new_attributes).to eq({"a" => [1,2], "b" => [3,4]})
     end
   end
 
   describe "old_attributes" do
     it "should return a hash of the old values" do
-      old_attributes = Audited::Audit.new(audited_changes: {a: [1, 2], b: [3, 4]}).old_attributes
+      old_attributes = Audited::Audit.new(action: 'update', audited_changes: {a: [1, 2], b: [3, 4]}).old_attributes
       expect(old_attributes).to eq({"a" => 1, "b" => 3})
+    end
+
+    it "should return a hash of the old values with action create" do
+      old_attributes = Audited::Audit.new(action: 'create', audited_changes: {a: [1, 2], b: [3, 4]}).old_attributes
+      expect(old_attributes).to eq({"a" => [1,2], "b" => [3,4]})
+    end
+
+    it "should return a hash of the old values with action destroy" do
+      old_attributes = Audited::Audit.new(action: 'destroy', audited_changes: {a: [1, 2], b: [3, 4]}).old_attributes
+      expect(old_attributes).to eq({"a" => [1,2], "b" => [3,4]})
     end
   end
 
