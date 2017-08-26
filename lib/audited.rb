@@ -2,8 +2,7 @@ require 'active_record'
 
 module Audited
   class << self
-    attr_accessor :ignored_attributes, :current_user_method, :audit_class
-
+    attr_accessor :ignored_attributes, :current_user_method, :audit_class, :async_class
     def audit_class
       @audit_class || Audit
     end
@@ -24,6 +23,7 @@ end
 
 require 'audited/auditor'
 require 'audited/audit'
+require 'audited/async'
 
 ::ActiveRecord::Base.send :include, Audited::Auditor
 
