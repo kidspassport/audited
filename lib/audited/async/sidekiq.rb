@@ -9,7 +9,7 @@ module Audited
       end
 
       def self.enqueue(klass_name, audits_attrs)
-        ::Sidekiq::Client.enqueue(self, klass_name, audits_attrs)
+        ::Sidekiq::Client.push('queue' => @queue, 'class' => klass_name, 'args' => audits_attrs)
       end
 
       # Takes a model `klass` and an array of hashes of audit `attrs` and
