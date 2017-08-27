@@ -307,7 +307,9 @@ module Audited
           attrs.delete(:associated)
         end
         user = Thread.current[:audited_user]
-        puts "User: #{user}"
+        if user.nil?
+          user = Audited.store[:current_controller].true_member
+        end
         if user
           attrs[:user_id] = user.id
           attrs[:user_type] = user.class.name
