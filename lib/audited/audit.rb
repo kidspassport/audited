@@ -65,7 +65,7 @@ module Audited
     def revision
       clazz = auditable_type.constantize
       (clazz.find_by_id(auditable_id) || clazz.new).tap do |m|
-        self.class.assign_revision_attributes(m, self.class.reconstruct_attributes(ancestors).merge(version: version))
+        self.class.assign_revision_attributes(m, self.class.reconstruct_attributes(ancestors).merge(audit_version: version))
       end
     end
 
@@ -82,6 +82,23 @@ module Audited
       (audited_changes || {}).inject({}.with_indifferent_access) do |attrs, (attr, values)|
         attrs[attr] = (action == 'update') ? values.first : values
         attrs
+      end
+    end
+
+    # Allows user to undo changes
+    def undo
+      case action
+      when 'create'
+        # destroys a newly created record
+        auditable.destroy!
+      when 'destroy'
+        # creates a new record with the destroyed record attributes
+        auditable_type.constantize.create!(audited_changes)
+      when 'update'
+        # changes back attributes
+        auditable.update!(audited_changes.transform_values(&:first))
+      else
+        raise StandardError, "invalid action given #{action}"
       end
     end
 
@@ -112,21 +129,20 @@ module Audited
     # All audits made during the block called will be recorded as made
     # by +user+. This method is hopefully threadsafe, making it ideal
     # for background operations that require audit information.
-    def self.as_user(user, &block)
+    def self.as_user(user)
+      last_audited_user = ::Audited.store[:audited_user]
       ::Audited.store[:audited_user] = user
       yield
     ensure
-      ::Audited.store[:audited_user] = nil
+      ::Audited.store[:audited_user] = last_audited_user
     end
 
     # @private
     def self.reconstruct_attributes(audits)
-      attributes = {}
-      result = audits.collect do |audit|
-        attributes.merge!(audit.new_attributes)[:version] = audit.version
-        yield attributes if block_given?
-      end
-      block_given? ? result : attributes
+      audits.each_with_object({}) do |audit, all|
+        all.merge!(audit.new_attributes)
+        all[:audit_version] = audit.version
+     end
     end
 
     # @private
@@ -144,15 +160,19 @@ module Audited
     end
 
     # use created_at as timestamp cache key
-    def self.collection_cache_key(collection = all, timestamp_column = :created_at)
+    def self.collection_cache_key(collection = all, *)
       super(collection, :created_at)
     end
 
     private
 
     def set_version_number
-      max = self.class.auditable_finder(auditable_id, auditable_type).descending.first.try(:version) || 0
-      self.version = max + 1
+      if action == 'create'
+        self.version = 1
+      else
+        max = self.class.auditable_finder(auditable_id, auditable_type).maximum(:version) || 0
+        self.version = max + 1
+      end
     end
 
     def set_audit_user
